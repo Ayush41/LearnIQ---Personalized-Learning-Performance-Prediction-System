@@ -1,10 +1,10 @@
-Yep 😄 — you want a **short, clean `README.md`**, actually written as Markdown, with the project overview first and then a practical step-by-step development plan.
-
- README.md
-
 # LearnIQ — Personalized Learning & Student Performance Prediction System
 
  > **Machine Learning-Based Personalized Learning and Student Performance Prediction System**
+>
+> 
+ **Project Title:**\
+ **Machine Learning-Based Personalized Learning and Student Performance Prediction System**
 
  LearnIQ is a pure **Machine Learning** project that analyzes student academic and learning behavior to predict performance, identify student groups, detect knowledge gaps, recommend personalized learning paths, and perform what-if analysis.
 
@@ -359,6 +359,3 @@ SHAP Explainability
  ↓
 Interactive Dashboard
 ```
-
- **Project Title:**\
- **Machine Learning-Based Personalized Learning and Student Performance Prediction System**
