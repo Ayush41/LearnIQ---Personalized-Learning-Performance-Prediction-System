@@ -1,1 +1,5 @@
-.env
+pandas
+numpy
+scikit-learn
+jupyter
+ipykernel
