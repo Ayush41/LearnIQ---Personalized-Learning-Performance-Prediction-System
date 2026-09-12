@@ -11,7 +11,7 @@ st.sidebar.title("LearnIQ Navigation")
 page = st.sidebar.radio("Go to", ["Student Dashboard", "What-If Simulation", "Knowledge Gap Analysis"])
 
 st.sidebar.markdown("---")
-st.sidebar.info("Developed by Team Aura")
+st.sidebar.info("Developed by Team LearnIQ.")
 
 # ----------------------------------------
 # PAGE 1: Student Dashboard
@@ -103,10 +103,10 @@ elif page == "Knowledge Gap Analysis":
     
     st.bar_chart(topic_data, use_container_width=True)
     
-    st.markdown("### 💡 Recommended Next Steps")
-    st.warning("**High Priority:** Your accuracy in **Graphs (30%)** is critically low. This is a prerequisite for advanced pathfinding algorithms.")
-    st.markdown("""
-    1. **Review Theory:** Re-watch Lecture 4 (Graph Traversal BFS/DFS).
-    2. **Practice:** Complete Assignment 3 (Basic Graph Implementations).
-    3. **Re-evaluate:** Attempt the Graph Knowledge Check quiz again.
-    """)
+    # st.markdown("### 💡 Recommended Next Steps")
+    # st.warning("**High Priority:** Your accuracy in **Graphs (30%)** is critically low. This is a prerequisite for advanced pathfinding algorithms.")
+    # st.markdown("""
+    # 1. **Review Theory:** Re-watch Lecture 4 (Graph Traversal BFS/DFS).
+    # 2. **Practice:** Complete Assignment 3 (Basic Graph Implementations).
+    # 3. **Re-evaluate:** Attempt the Graph Knowledge Check quiz again.
+    # """)
