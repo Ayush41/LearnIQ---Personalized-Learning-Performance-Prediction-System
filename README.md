@@ -8,6 +8,14 @@
 
  LearnIQ is a pure **Machine Learning** project that analyzes student academic and learning behavior to predict performance, identify student groups, detect knowledge gaps, recommend personalized learning paths, and perform what-if analysis.
 
+ ## Dataset Used
+
+ This project is designed to work with the Student Academic Performance Dataset from Kaggle:
+
+ https://www.kaggle.com/datasets/ayushraj41/student-academic-performance-dataset
+
+ The dataset is expected to provide academic and learning-behavior features such as attendance, study hours, quiz scores, assignment marks, previous performance, and outcome-related labels used for prediction and personalization tasks.
+
  ## About the Project
 
  The system follows this ML pipeline:
