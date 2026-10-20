@@ -1,6 +1,6 @@
 """Simple login screen for the LearnIQ frontend prototype."""
 import streamlit as st
-USERNAME = 'abc@gmail.com'
+USERNAME = 'admin'
 PASSWORD = 'admin123'
 
 def render_login() -> bool:
