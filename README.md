@@ -71,6 +71,42 @@ Dashboard
 
  No LLM, ChatGPT API, RAG, LangChain, or Generative AI is required.
 
+## Run the MVP Locally
+
+Activate the project environment and install dependencies:
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Start the FastAPI service in one terminal:
+
+```bash
+uvicorn backend.main:app --reload --port 8000
+```
+
+Start the Streamlit frontend in a second terminal:
+
+```bash
+streamlit run app.py
+```
+
+The frontend is available at `http://localhost:8501`. API documentation is available at `http://localhost:8000/docs`. The current demo login is `abc@gmail.com` / `admin123`.
+
+For the Random Forest, Extra Trees, and soft-voting ensemble artifacts, run notebooks `03_RandomForest_model.ipynb`, `04_ExtraTrees_model.ipynb`, and `05_VotingEnsemble_model.ipynb` in order. Notebook 05 saves every evaluated model and its held-out metrics. At startup, the API selects the available model with the highest macro-F1; if metrics are missing, it falls back to the Logistic Regression artifact. Restart the API after training.
+
+### MVP API Routes
+
+- `GET /api/v1/health` — service, data, and model readiness
+- `GET /api/v1/dashboard` — dataset-level summary metrics
+- `GET /api/v1/students` and `GET /api/v1/students/{student_id}` — student records and topic attempts
+- `GET /api/v1/students/{student_id}/knowledge-gaps` — per-topic mastery status
+- `GET /api/v1/students/{student_id}/recommendations` — score-based practice suggestions
+- `GET /api/v1/segments` — live K-Means student groups
+- `GET /api/v1/model-comparison` and `GET /api/v1/feature-importance` — model evaluation and permutation importance
+- `POST /api/v1/predict` and `POST /api/v1/what-if` — model inference and scenario comparison
+
 ---
 
  # Development Plan

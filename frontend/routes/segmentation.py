@@ -1,28 +1,36 @@
 import streamlit as st
-from data import mock_data
-from ui import charts
-from ui.components import card, render_cluster_card, render_insight_card, render_lede, render_note, render_section_header
+import pandas as pd
+from data import api_client
+from ui.components import card, render_insight_card, render_lede, render_note, render_section_header
 
 def render():
-    name = st.session_state.student
-    s = mock_data.STUDENTS[name]
-    data = mock_data.CLUSTER_DATA
-    render_lede('Discover student groups using K-Means clustering.')
+    student_id = st.session_state.get('student_id')
+    if not student_id:
+        st.warning('Select a student to view student segments.')
+        return
+    try:
+        data = api_client.get('segments', params={'clusters': 4})
+    except api_client.ApiClientError as error:
+        st.error(f'Could not calculate student segments: {error}')
+        return
+    render_lede('Explore groups found by K-Means using study behavior and academic inputs.')
     a, b, c = st.columns(3)
     with a:
-        render_insight_card('Algorithm', data['summary']['algorithm'], 'Unsupervised learning')
+        render_insight_card('Algorithm', 'K-Means', 'Unsupervised learning')
     with b:
-        render_insight_card('Clusters', data['summary']['clusters'], 'Groups of similar students')
+        render_insight_card('Clusters', len(data['clusters']), 'Groups of similar students')
     with c:
-        render_insight_card('Silhouette Score', data['summary']['silhouette'], 'Cluster separation (demo value)', 'success')
+        score = data['silhouette_score']
+        render_insight_card('Silhouette Score', f'{score:.3f}' if score is not None else 'N/A', 'Cluster separation on this dataset', 'success')
     st.write('')
     with card('clusters'):
-        render_section_header('Cluster Visualization', 'Study hours vs quiz average')
-        st.plotly_chart(charts.cluster_chart(data['points'], data['clusters'], name, s['hours'], s['quiz']), use_container_width=True, config={'displayModeBar': False})
+        render_section_header('Student Clusters', 'Study hours per week vs quiz average')
+        points = pd.DataFrame(data['students'])
+        if not points.empty:
+            st.scatter_chart(points, x='study_hours_per_week', y='quiz_average', color='name', size='final_marks', height=420)
+            st.caption(f'Selected student: {student_id}')
     st.write('')
-    selected = next((i for i, c in enumerate(data['clusters']) if c['name'] == s['segment']), None)
-    for i, (col, cluster) in enumerate(zip(st.columns(4), data['clusters'])):
-        with col:
-            st.markdown(f'**Cluster {i + 1}**')
-            render_cluster_card(cluster, is_selected=i == selected)
-    render_note('These descriptions are demonstration interpretations of mock K-Means results. Real cluster meanings will be derived from the trained model.')
+    with card('cluster-summary'):
+        render_section_header('Cluster Summary', 'Groups sorted by average final marks')
+        st.dataframe(pd.DataFrame(data['clusters']), hide_index=True, use_container_width=True)
+    render_note('Clusters are recomputed from the processed dataset. They describe similar student profiles and are not performance predictions.')

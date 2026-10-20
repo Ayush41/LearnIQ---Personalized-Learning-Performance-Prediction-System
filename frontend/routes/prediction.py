@@ -23,6 +23,9 @@ def render():
         model_info = api_client.get('model-info')
         defaults = model_info['feature_defaults']
         student_id = st.session_state.get('student_id')
+        if st.session_state.get('_prediction_student_id') != student_id:
+            st.session_state.pop('prediction', None)
+            st.session_state._prediction_student_id = student_id
         current_student = api_client.get(f'students/{student_id}')['student'] if student_id else {}
         students = api_client.get('students', params={'limit': 500})['items']
         comparison = api_client.get('model-comparison')

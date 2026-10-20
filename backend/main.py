@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import json
 import pickle
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field
 from sklearn.cluster import KMeans
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import silhouette_score
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -21,10 +20,12 @@ DATA_DIR = PROJECT_ROOT / "data" / "processed"
 MODEL_DIR = PROJECT_ROOT / "models"
 STUDENT_DATA_PATH = DATA_DIR / "student_performance_processed.csv"
 TOPIC_DATA_PATH = DATA_DIR / "topic_attempts_processed.csv"
-MODEL_CANDIDATES = [
-    MODEL_DIR / "student_performance_ensemble.pkl",
-    MODEL_DIR / "student_performance_model.pkl",
-]
+MODEL_PATHS = {
+    "Logistic Regression": MODEL_DIR / "student_performance_model.pkl",
+    "Random Forest": MODEL_DIR / "student_performance_random_forest.pkl",
+    "Extra Trees": MODEL_DIR / "student_performance_extra_trees.pkl",
+    "Two-model Soft Voting Ensemble": MODEL_DIR / "student_performance_ensemble.pkl",
+}
 EXCLUDED_FEATURES = {
     "student_id",
     "performance_category",
@@ -71,7 +72,26 @@ def _topic_data() -> pd.DataFrame:
 
 
 def _load_model() -> tuple[Any | None, str | None]:
-    for path in MODEL_CANDIDATES:
+    candidates: list[Path] = []
+    metrics_path = MODEL_DIR / "model_metrics.json"
+    if metrics_path.exists():
+        try:
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            ranked = sorted(
+                metrics,
+                key=lambda row: (row.get("f1_macro", -1), row.get("accuracy", -1)),
+                reverse=True,
+            )
+            candidates.extend(
+                MODEL_PATHS[row["model"]]
+                for row in ranked
+                if row.get("model") in MODEL_PATHS
+            )
+        except (OSError, json.JSONDecodeError, TypeError):
+            candidates = []
+    candidates.extend(MODEL_PATHS.values())
+
+    for path in dict.fromkeys(candidates):
         if path.exists():
             try:
                 with path.open("rb") as model_file:
@@ -193,10 +213,10 @@ def feature_importance() -> dict[str, Any]:
         raise HTTPException(status_code=503, detail="No trained model is available")
     df = _student_data()
     features = _feature_columns(df)
-    sample = df[features].sample(n=min(250, len(df)), random_state=42)
+    sample = df[features].sample(n=min(80, len(df)), random_state=42)
     labels = df.loc[sample.index, "performance_category"]
     try:
-        result = permutation_importance(model, sample, labels, n_repeats=3, random_state=42, n_jobs=-1)
+        result = permutation_importance(model, sample, labels, n_repeats=2, random_state=42, n_jobs=1)
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Could not calculate feature importance: {error}") from error
     ranked = sorted(
@@ -239,13 +259,8 @@ def segments(clusters: int = Query(default=4, ge=2, le=8)) -> dict[str, Any]:
     scaled = StandardScaler().fit_transform(sample)
     labels = KMeans(n_clusters=clusters, random_state=42, n_init=10).fit_predict(scaled)
     centers = pd.DataFrame(sample).assign(cluster=labels).groupby("cluster").mean(numeric_only=True)
-    output = df[["student_id"]].copy()
+    output = df[["student_id", *candidate_columns, "performance_category", "final_marks"]].copy()
     output["cluster"] = labels
-    output = output.merge(
-        df[["student_id", "performance_category", "final_marks"]],
-        on="student_id",
-        how="left",
-    )
     summary = (
         output.groupby("cluster", as_index=False)
         .agg(student_count=("student_id", "size"), avg_final_marks=("final_marks", "mean"))

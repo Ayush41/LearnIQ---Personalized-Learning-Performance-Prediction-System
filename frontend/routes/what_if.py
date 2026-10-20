@@ -7,6 +7,10 @@ def render():
     if not student_id:
         st.warning('Select a student to run scenario analysis.')
         return
+    if st.session_state.get('_scenario_student_id') != student_id:
+        st.session_state.pop('scenario_current', None)
+        st.session_state.pop('scenario_prediction', None)
+        st.session_state._scenario_student_id = student_id
     try:
         student = api_client.get(f'students/{student_id}')['student']
     except api_client.ApiClientError as error:
