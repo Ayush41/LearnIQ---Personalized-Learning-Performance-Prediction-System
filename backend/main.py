@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pickle
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,11 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from sklearn.cluster import KMeans
+from sklearn.inspection import permutation_importance
+from sklearn.metrics import silhouette_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = PROJECT_ROOT / "data" / "processed"

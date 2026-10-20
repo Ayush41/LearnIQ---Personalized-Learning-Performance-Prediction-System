@@ -5,3 +5,8 @@ matplotlib
 seaborn
 jupyter
 ipykernel
+fastapi
+uvicorn[standard]
+requests
+streamlit
+plotly
