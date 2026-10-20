@@ -1,6 +1,7 @@
 """Small reusable UI pieces. Most functions draw HTML with st.markdown; the
 *_html ones return a string so they can be nested inside other HTML."""
 import streamlit as st
+from data import api_client
 from data import mock_data
 BADGE_KIND = {'Low': 'success', 'Strong': 'success', 'Good': 'success', 'Medium': 'warning', 'Moderate': 'warning', 'High': 'danger', 'Weak': 'danger'}
 RISK_TONE = {'Low': 'success', 'Medium': 'warning', 'High': 'danger'}
@@ -25,8 +26,20 @@ def render_page_header(title):
         '<div class="page-tag">Machine Learning-Based Personalized Learning</div>',
         unsafe_allow_html=True,
     )
-    mid.selectbox('Student', list(mock_data.STUDENTS), key='student', label_visibility='collapsed')
-    right.markdown('<span class="status"><i></i>Demo Data</span>', unsafe_allow_html=True)
+    try:
+        students = api_client.get('students', params={'limit': 500})['items']
+        student_ids = [student['student_id'] for student in students]
+        if student_ids:
+            current_id = st.session_state.get('student_id')
+            if current_id not in student_ids:
+                st.session_state.student_id = student_ids[0]
+            mid.selectbox('Student', student_ids, key='student_id', label_visibility='collapsed')
+        else:
+            mid.caption('No student records')
+        right.markdown('<span class="status"><i></i>API connected</span>', unsafe_allow_html=True)
+    except api_client.ApiClientError:
+        mid.caption('API unavailable')
+        right.markdown('<span class="status"><i></i>Offline</span>', unsafe_allow_html=True)
 
 def render_lede(text):
     _html(f'<div class="lede">{text}</div>')

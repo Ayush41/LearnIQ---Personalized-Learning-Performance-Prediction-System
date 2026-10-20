@@ -158,6 +158,112 @@ def health() -> dict[str, Any]:
     }
 
 
+@app.get("/api/v1/model-info")
+def model_info() -> dict[str, Any]:
+    students = _student_data()
+    feature_columns = _feature_columns(students)
+    classes = getattr(model, "classes_", []) if model is not None else []
+    return {
+        "model": model_filename,
+        "model_loaded": model is not None,
+        "target": "performance_category",
+        "classes": [str(value) for value in classes],
+        "features": feature_columns,
+        "feature_defaults": _feature_defaults(students, feature_columns),
+    }
+
+
+@app.get("/api/v1/model-comparison")
+def model_comparison() -> dict[str, Any]:
+    metrics_path = MODEL_DIR / "model_metrics.json"
+    if metrics_path.exists():
+        import json
+
+        with metrics_path.open(encoding="utf-8") as metrics_file:
+            return {"models": json.load(metrics_file), "source": "held-out test set"}
+    return {
+        "models": [{"model": model_filename or "No trained model", "accuracy": None}],
+        "source": "Run the model notebooks to produce held-out comparison metrics.",
+    }
+
+
+@app.get("/api/v1/feature-importance")
+def feature_importance() -> dict[str, Any]:
+    if model is None:
+        raise HTTPException(status_code=503, detail="No trained model is available")
+    df = _student_data()
+    features = _feature_columns(df)
+    sample = df[features].sample(n=min(250, len(df)), random_state=42)
+    labels = df.loc[sample.index, "performance_category"]
+    try:
+        result = permutation_importance(model, sample, labels, n_repeats=3, random_state=42, n_jobs=-1)
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Could not calculate feature importance: {error}") from error
+    ranked = sorted(
+        zip(features, result.importances_mean),
+        key=lambda item: abs(float(item[1])),
+        reverse=True,
+    )[:12]
+    return {
+        "model": model_filename,
+        "importance": [
+            {"feature": feature, "importance": round(float(value), 5)}
+            for feature, value in ranked
+        ],
+    }
+
+
+@app.get("/api/v1/segments")
+def segments(clusters: int = Query(default=4, ge=2, le=8)) -> dict[str, Any]:
+    df = _student_data()
+    candidate_columns = [
+        column
+        for column in [
+            "previous_marks",
+            "attendance_pct",
+            "study_hours_per_week",
+            "study_days_per_week",
+            "study_consistency_pct",
+            "sleep_hours_per_night",
+            "quiz_average",
+            "assignment_average",
+            "missed_assignments",
+            "average_attempts",
+        ]
+        if column in df.columns
+    ]
+    if len(df) < clusters or len(candidate_columns) < 2:
+        raise HTTPException(status_code=422, detail="Not enough student data for clustering")
+
+    sample = df[candidate_columns].copy()
+    scaled = StandardScaler().fit_transform(sample)
+    labels = KMeans(n_clusters=clusters, random_state=42, n_init=10).fit_predict(scaled)
+    centers = pd.DataFrame(sample).assign(cluster=labels).groupby("cluster").mean(numeric_only=True)
+    output = df[["student_id"]].copy()
+    output["cluster"] = labels
+    output = output.merge(
+        df[["student_id", "performance_category", "final_marks"]],
+        on="student_id",
+        how="left",
+    )
+    summary = (
+        output.groupby("cluster", as_index=False)
+        .agg(student_count=("student_id", "size"), avg_final_marks=("final_marks", "mean"))
+        .sort_values("avg_final_marks", ascending=False)
+    )
+    names = {int(row.cluster): f"Group {index + 1}" for index, row in enumerate(summary.itertuples())}
+    summary["name"] = summary["cluster"].map(names)
+    output["name"] = output["cluster"].map(names)
+    silhouette = silhouette_score(scaled, labels) if len(set(labels)) > 1 else None
+    return {
+        "clusters": _safe_records(summary),
+        "students": _safe_records(output.head(500)),
+        "centers": _safe_records(centers.reset_index()),
+        "silhouette_score": round(float(silhouette), 4) if silhouette is not None else None,
+        "features": candidate_columns,
+    }
+
+
 @app.get("/api/v1/dashboard")
 def dashboard() -> dict[str, Any]:
     students = _student_data()
