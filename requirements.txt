@@ -10,3 +10,4 @@ uvicorn[standard]
 requests
 streamlit
 plotly
+xgboost
