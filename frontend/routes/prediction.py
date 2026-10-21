@@ -77,5 +77,6 @@ def render():
         metric_frame = pd.DataFrame(comparison.get('models', []))
         if not metric_frame.empty and metric_frame.get('accuracy', pd.Series(dtype=float)).notna().any():
             st.dataframe(metric_frame, hide_index=True, use_container_width=True)
+            render_note('Accuracy is the fraction of correct test predictions. Macro-F1 averages the F1 score across categories equally. The API selects the available model with the highest recorded macro-F1 after restart.')
         else:
             render_note('Train the model notebooks to populate held-out model comparisons.')

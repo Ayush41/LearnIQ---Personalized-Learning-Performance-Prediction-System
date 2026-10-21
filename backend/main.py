@@ -25,6 +25,7 @@ MODEL_PATHS = {
     "Random Forest": MODEL_DIR / "student_performance_random_forest.pkl",
     "Extra Trees": MODEL_DIR / "student_performance_extra_trees.pkl",
     "Two-model Soft Voting Ensemble": MODEL_DIR / "student_performance_ensemble.pkl",
+    "XGBoost": MODEL_DIR / "student_performance_xgboost.pkl",
 }
 EXCLUDED_FEATURES = {
     "student_id",
