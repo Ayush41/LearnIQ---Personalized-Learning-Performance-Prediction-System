@@ -18,45 +18,82 @@
 
  ## About the Project
 
- The system follows this ML pipeline:
+LearnIQ combines student-level academic and study-behavior records with topic-attempt data. Its model predicts a performance category, while the dashboard exposes student analytics, topic gaps, simple study suggestions, and scenario comparisons.
 
-```
-Student Data
-    ↓
-Data Preprocessing
-    ↓
-Feature Engineering
-    ↓
-EDA
-    ↓
-┌─────────────────────┐
-│                     │
-Performance       Student
-Prediction        Segmentation
-│                     │
-└──────────┬──────────┘
-           ↓
-Knowledge Gap Detection
-           ↓
-Recommendation Engine
-           ↓
-Personalized Study Path
-           ↓
-What-if Analysis
-           ↓
-Explainable ML (SHAP)
-           ↓
-Dashboard
+## System Architecture
+
+The current MVP has two connected flows: notebooks prepare data and train candidate models offline, while FastAPI and Streamlit serve predictions and student analytics at runtime.
+
+```mermaid
+flowchart LR
+    subgraph offline["Offline data preparation and model training"]
+        raw["data/raw<br/>Student records CSV<br/>Topic attempts CSV"] --> prep["Notebook 01<br/>Clean, inspect, visualize"]
+        prep --> processed["data/processed<br/>Processed student CSV<br/>Processed topic CSV"]
+
+        processed --> lr_nb["Notebook 02<br/>Logistic Regression"]
+        processed --> rf_nb["Notebook 03<br/>Random Forest"]
+        processed --> et_nb["Notebook 04<br/>Extra Trees"]
+        processed --> ens_nb["Notebook 05<br/>Compare candidates<br/>Soft-voting ensemble"]
+        processed --> xgb_nb["Notebook 06<br/>XGBoost"]
+
+        lr_nb --> lr_artifact["Logistic Regression<br/>.pkl pipeline"]
+        rf_nb --> rf_artifact["Random Forest<br/>.pkl pipeline"]
+        et_nb --> et_artifact["Extra Trees<br/>.pkl pipeline"]
+        ens_nb --> ens_artifact["Soft-voting ensemble<br/>.pkl pipeline"]
+        xgb_nb --> xgb_artifact["XGBoost<br/>.pkl pipeline"]
+        rf_nb --> metrics["models/model_metrics.json"]
+        et_nb --> metrics
+        ens_nb --> metrics
+        xgb_nb --> metrics
+    end
+
+    subgraph runtime["Runtime: local application"]
+      user["Student / presenter"] --> auth["Demo login<br/>frontend/ui/auth.py"]
+      auth --> ui["Streamlit frontend<br/>Dashboard · Prediction · What-if<br/>Segments · Knowledge gaps<br/>Recommendations · Feature importance"]
+        ui --> client["frontend/data/api_client.py"]
+        client --> api["FastAPI<br/>backend/main.py"]
+        api --> select["Startup model selector<br/>Highest recorded macro-F1"]
+        inference["Selected sklearn pipeline<br/>preprocessing + classifier"]
+        select --> inference
+
+        api --> data_routes["Dashboard and student routes"]
+        api --> predict_routes["Prediction and what-if routes"]
+        api --> cluster_route["K-Means segmentation"]
+        api --> topic_routes["Topic gaps and score-based<br/>recommendations"]
+        api --> explain_route["Permutation feature importance"]
+        api --> compare_route["Model comparison metrics"]
+    end
+
+    processed -. "CSV read at runtime" .-> data_routes
+    processed -. "Feature defaults and student records" .-> predict_routes
+    processed -. "Study features" .-> cluster_route
+    processed -. "Topic scores and attempts" .-> topic_routes
+    inference --> predict_routes
+    inference --> explain_route
+    metrics --> select
+    metrics --> compare_route
+    lr_artifact --> select
+    rf_artifact --> select
+    et_artifact --> select
+    ens_artifact --> select
+    xgb_artifact --> select
+    data_routes --> api_response["JSON responses"]
+    predict_routes --> api_response
+    cluster_route --> api_response
+    topic_routes --> api_response
+    explain_route --> api_response
+    compare_route --> api_response
+    api_response --> client
 ```
 
  ### Core ML Components
 
- - **Performance Prediction** — Predict marks, performance category, risk level, and pass probability.
+ - **Performance Prediction** — Classify `performance_category` and return model probabilities; this MVP does not predict an exact mark.
 - **Student Segmentation** — Use K-Means to discover student learning/performance groups.
-- **Knowledge Gap Detection** — Identify weak, moderate, and strong topics.
-- **Recommendation Engine** — Recommend what the student should study next.
-- **What-if Analysis** — Predict how changes in study behavior may affect performance.
-- **Explainable ML** — Use SHAP to explain model predictions.
+- **Knowledge Gap Detection** — Classify topic scores as strong, moderate, or weak.
+- **Recommendation Engine** — Generate score-based practice suggestions for low-scoring topics.
+- **What-if Analysis** — Compare model category predictions for current and changed inputs.
+- **Feature Importance** — Show permutation importance; it is not SHAP or a causal explanation.
 
  ## Tech Stack
 
@@ -65,11 +102,13 @@ Dashboard
 - **Matplotlib / Seaborn**
 - **Scikit-learn**
 - **XGBoost**
-- **SHAP**
-- **MySQL / PostgreSQL**
+- **CSV files** for the current MVP data store
 - **Streamlit**
+- **FastAPI**
 
  No LLM, ChatGPT API, RAG, LangChain, or Generative AI is required.
+
+The current MVP reads processed CSVs directly, uses demo-only login, and generates recommendations with simple score thresholds. A production database, stronger authentication, and a validated adaptive recommendation model are future work.
 
 ## Run the MVP Locally
 
